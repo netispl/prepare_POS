@@ -25,7 +25,7 @@
         src: '/tmp/euro2.tgz'
         dest: '/'
 
-    - name: Zmiana rozdzielczosci eurosklep - Surface 
+    - name: Zmiana rozdzielczosci eurosklep - Surface
       replace:
         path: '/{{ dx }}/xkasnet-launcher'
         regexp: '{{ item.regexp }}'
@@ -40,7 +40,7 @@
         state: absent
         path: '/{{ dx }}/.cache'
 
-      #quant 
+      #quant
 
     - name: Zmiana rozdzielczosci eurosklep - Quant
       replace:
@@ -51,6 +51,3 @@
       with_items:
         - { regexp: 'kasa.*$', line: 'kasa.config-964x768_85dpi-eceuro' }
       when: ansible_product_name == 'PT3200'
-
-
- 
