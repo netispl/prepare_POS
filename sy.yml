@@ -1,0 +1,99 @@
+
+    - include_vars: v.yml
+#zmienne
+
+    - name: Poprawiam zmienne.dat
+      replace:
+        path: '/{{ dk }}/konfiguracja/zmienne.dat'
+        regexp: '{{ item.regexp }}'
+        replace: '{{ item.line }}'
+        backup: yes
+      with_items:
+        - { regexp: '^#baza_serwera', line: 'baza_serwera' }
+
+# synchronizacja
+
+    - name: Usuwam katalog z logami
+      file:
+        state: absent
+        path: '/{{ dk }}/logi/check/'
+
+    - name: Kiluje serva
+      shell: killall -9 servc; killall -9 servr; killall -9 serv
+      args:
+        executable: /bin/bash
+      ignore_errors: yes
+
+    - name: Synchronizuje StanKasy2
+      shell: '{{ cdk }}/; bin/serv -c -oStanKasy2'
+      args:
+        executable: /bin/bash
+      ignore_errors: yes
+
+    - name: Uruchamiam check df_daemon
+      shell: '{{ cdk }}; bin/df_daemon -c'
+      args:
+        executable: /bin/bash
+      ignore_errors: yes
+
+    - name: Szukam ip kasy
+      shell: |
+        ifconfig "{{ e }}" | grep inet | cut  -d ' ' -f 10-10 | head -n1
+      args:
+        executable: /bin/bash
+      register: IP_KASY
+
+    - name: Odczytuje numer drukarki fiskalnej
+      shell: |
+         grep 'Numer fiskalny' /{{ dk }}logi/check/informacje202* | tail -n1 | cut -f10-10 -d ' '
+      args:
+        executable: /bin/bash
+      register: nrfiskdruk
+
+    - name: Wysylam maila z informacja o braku drukarki fiskalej
+      shell: |
+              {{ c }} '{{ cds }}; skrypty/wyslijEmila {{ mlist }} -TEMAT "Brak podlaczonej drukarki fiskalnej - kasa {{ IP_KASY.stdout }} sklep: {{ NRS }} dodaj recznie"'
+      args:
+        executable: /bin/bash
+      when: nrfiskdruk.stdout == ''
+
+    - name: Dodaje numer drukarki fiskalnej do hm00
+      shell: |
+              {{ c }} "mysql {{ base }} -sN -e 'replace into magazyn2kasa values ({{ NRS }},0,{{ nrfiskdruk.stdout }},0,0,NOW());'"
+      args:
+        executable: /bin/bash
+      when: nrfiskdruk.stdout != ''
+
+    - name: Robie pelna synchronizacje
+      shell: '{{ cdk }}; bin/df_daemon -c ; skrypty.loc/servc'
+      args:
+        executable: /bin/bash
+      ignore_errors: yes
+      register: serv
+
+    - name: Wysylam maila o blednym wykonaniu servc
+      shell: |
+              {{ c }} '{{ cds }}; skrypty/wyslijEmila {{ mlist }} -TEMAT "Synchronizacja zakonczona bledem - kasa {{ IP_KASY.stdout }} sklep: {{ NRS }} sprawdz i napraw recznie"'
+      args:
+        executable: /bin/bash
+      when: serv.rc != 0
+
+    - name: Update flagi sklepow
+      shell: |
+              {{ c }} "mysql {{ base }} -sN -e 'update Sklepy set flaga=(flaga^0x80000) where NrSklep={{ NRS }};'"
+      args:
+        executable: /bin/bash
+      when: serv.rc == 0
+
+    - name: Wysylam informacje o nowym sklepie
+      shell: |
+              {{ c }} '{{ cds }}; skrypty/wyslijEmila {{ mlist }} -TEMAT "Eurocash - nowy sklep: {{ adres.stdout }}, {{ NRS }}, {{ symbol.stdout }}, kasa nr {{ NRK }}, ip {{ IP_KASY.stdout }}, nrFiskDruk: {{ nrfiskdruk.stdout }}"'
+      args:
+        executable: /bin/bash
+      when: serv.rc == 0
+
+    - name: Usuwam sudo
+      file:
+        state: absent
+        path: '/{{ sp }}/90-cloudimg-ubuntu'
+      ignore_errors: yes

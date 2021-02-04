@@ -1,0 +1,212 @@
+# operacje na kasie 
+
+    - include_vars: v.yml
+
+#mysql kasa - operacje
+
+    - name: Instaluje paczke do obslugi mysql
+      command: ansible-galaxy collection install community.mysql
+
+    - name: Instaluje paczke python-pymysql
+      apt:
+        name: '{{ item }}'
+        state: present
+        force: yes
+        update_cache: yes
+      loop:
+        - python-pymysql
+
+    - name: Czyszcze baza kasa
+      community.mysql.mysql_query:
+        login_db: '{{ base_local }}'
+        query:
+        - 'delete from Towary'
+        - 'delete From Towary'
+        - 'delete from ParagonyNaglowki'
+        - 'delete from ParagonyPozycje'
+        - 'delete from ParagonyPlatnosci'
+        - 'delete from Anulowania'
+        - 'delete from StanKasy2'
+        single_transaction: yes
+
+    - name: Poprawiam baze kasa
+
+      ignore_errors: true
+      community.mysql.mysql_query:
+        login_db: '{{ base_local }}'
+        query:
+        - 'drop index uniqStanKasy2 on StanKasy2'
+        - 'CREATE UNIQUE index uniqStanKasy2 on StanKasy2 (idStanu,NrKasy,NrSklep)'
+        - 'update StanKasy set stan={{ NRS }} where idStanu="NrSklep"'
+        - 'alter table KSKGazetkiAkceptacja drop column cena'
+        - 'alter table KSKGazetkiAkceptacja add column cena int not null default 0 after plu'
+        - 'alter table KodyZwiazane drop primary key, add primary key(kod_zwiazany,NrSklep)'
+        - 'update StanKasy set stan=0 where idStanu="Praca Online"'
+        single_transaction: yes
+
+#przegladarka poprawione 02.01.2021 na wzorcu 
+
+        #    - name: Pobieram chrome
+        #      get_url:
+        #        url: ftp://{{fuser}}:{{fpassword}}@{{fhost}}/{{dftp}}/chrom.tgz
+        #        dest: /tmp/
+        #
+        #    - name: Kiluje chrome
+        #      shell: killall -9 chromium-browser
+        #      args:
+        #        executable: /bin/bash
+        #      ignore_errors: yes
+        #
+        #    - name: Usuwam config chroma
+        #      file: 
+        #        state: absent
+        #        path: '/{{ du }}/.config/chromium'
+        #
+        #    - name: Rozpakowuje paczke chroma
+        #      unarchive:
+        #        src: '/tmp/chrom.tgz'
+        #        dest: '/{{ du }}/'
+        #        group: user
+        #        owner: user
+        
+    - name: Tworze skrypt polaczenie_db_azure.sh
+      blockinfile:
+          path: '/{{ dk }}/skrypty.loc/polaczenie_db_azure.sh'
+          block: |
+              #!/bin/bash
+              #prawilna md5sum wifi
+              cd /home/kasa/skrypty.loc/
+              check_route=`/sbin/route -n | grep "192.168.223.1" | wc -l`
+              LOG_DB_AZURE=logi/polaczenie_do_azure_db.log
+              if [ "$check_route" -lt 7 ] ; then
+              /sbin/route add -host 191.235.193.75 gw 192.168.223.1
+              /sbin/route add -host 40.113.93.91 gw 192.168.223.1 
+              /sbin/route add -host 191.237.232.75 gw 192.168.223.1
+              /sbin/route add -host 40.68.37.158 gw 192.168.223.1
+              /sbin/route add -host 52.138.224.6 gw 192.168.223.1
+              /sbin/route add -host 52.138.224.7 gw 192.168.223.1 
+              echo `date` >>$LOG_DB_AZURE
+              echo `pstree -plac | grep ovpn-client.azure`>>$LOG_DB_AZURE
+              echo "Zaladowalem route" >>$LOG_DB_AZURE
+              echo "-------------------" >>$LOG_DB_AZURE
+              fi
+      
+          create: yes
+          mode: +x
+ 
+    - name: Odpalam routing za pomoca skryptu polaczenie_db_azure
+      shell: '{{ cdk }}; skrypty.loc/polaczenie_db_azure.sh'
+      args:
+        executable: /bin/bash
+
+    - name: Tworze skrypt EC_pos.sh
+      blockinfile:
+        path: '/{{ dk }}/skrypty.loc/EC_pos.sh'
+        block: | 
+         #!/bin/bash
+         skrypty.loc/wifi_bt.sh >/dev/null &
+         skrypty.loc/polaczenie_db_azure.sh >/dev/null &
+         SLEEP=`echo "select (convert(stan,INT)%100000)*5 sleep from StanKasy where idStanu='NrSklep'" |mysql kasa | tail -n1`
+         sleep $SLEEP
+         ILE=`ps ax|grep -v grep|grep "bin\serv"|wc -l`
+         if [ $ILE -lt 1 ] ; then
+         skrypty.loc/servr >/dev/null &
+         fi
+        create: yes
+        mode: +x
+
+    - name: Tworze skrypt servc
+      blockinfile:
+        path: '/{{ dk }}/skrypty.loc/servc'
+        block: | 
+         #!/bin/bash 
+         #exit -1
+         FILE=/tmp/Towary.$$.csv
+         FILE_STANK2=/tmp/StanK2.$$.csv
+         rm -f $FILE $FILE_STANK2
+        
+         NRSKL=`echo "select stan from StanKasy where idStanu='NrSklep'"|mysql kasa|tail -n1`
+        
+         #ladujemy Towary
+         echo "select s.plu, nazwa_kas nazwa, kodPask,if (t.VAT=12,3,t.VAT),0 typRabatu, t.idJm, s.cena_sprz*100 cena,
+         t.tandem, if (t.VAT=12,1,0) kaucja, s.blokada, s.czas  
+         from SklepCenyStany s 
+         join Magazyny m on s.magazyn=m.magazyn and m.sklep=$NRSKL 
+         join Towarowy t on s.plu=t.plu "|mysql --defaults-extra-file=.my.cnf --default-character-set=latin2 hm00|tail -n +2 > $FILE
+         echo "load data infile '${FILE}' replace into table Towary CHARACTER SET latin1"|mysql --default-character-set=latin1 kasa
+        
+         #ladujemy StanKasy2
+         echo "select * from stankasy2 where (NrSklep=0 or NrSklep=$NRSKL)" |mysql --defaults-extra-file=.my.cnf --default-character-set=latin2 hm00 |tail -n +2 >$FILE_STANK2
+         echo "load data infile '${FILE_STANK2}' replace into table StanKasy2 CHARACTER SET latin1"|mysql --default-character-set=latin1 kasa
+        
+         #rm -f $FILE
+         bin/serv -c
+        
+        create: yes
+        mode: +x
+
+    - name: Tworze skrypt servr
+      blockinfile:
+        path: '/{{ dk }}/skrypty.loc/servr'
+        block: | 
+         #!/bin/bash 
+         #exit -1
+         FILE=/tmp/Towary.$$.csv
+         FILE_STANK2=/tmp/StanK2.$$.csv
+         rm -f $FILE $FILE_STANK2
+        
+         CZAS=\'`echo "select czas+0 from OstatniaModyfikacja where id='KopiaSerwerKasa'"|mysql kasa|tail -n1`\'
+         NRSKL=`echo "select stan from StanKasy where idStanu='NrSklep'"|mysql kasa|tail -n1`
+        
+         echo "select s.plu, nazwa_kas nazwa, kodPask,if (t.VAT=12,3,t.VAT),0 typRabatu, t.idJm, s.cena_sprz*100 cena,
+         t.tandem, if (t.VAT=12,1,0) kaucja, s.blokada, s.czas  
+         from SklepCenyStany s 
+         join Magazyny m on s.magazyn=m.magazyn and m.sklep=$NRSKL 
+         join Towarowy t on s.plu=t.plu 
+         where s.czas>=$CZAS or t.czas>=$CZAS "|mysql --defaults-extra-file=.my.cnf --default-character-set=latin2 hm00 |tail -n +2 > $FILE
+        
+         echo "load data infile '${FILE}' replace into table Towary CHARACTER SET latin1"|mysql --default-character-set=latin1 kasa
+        
+         #ladujemy StanKasy2
+         echo "select * from stankasy2 where (NrSklep=0 or NrSklep=$NRSKL)" |mysql --defaults-extra-file=.my.cnf --default-character-set=latin2 hm00 |tail -n +2 >$FILE_STANK2
+         echo "load data infile '${FILE_STANK2}' replace into table StanKasy2 CHARACTER SET latin1"|mysql --default-character-set=latin1 kasa
+        
+         rm -f $FILE
+         bin/serv -r
+
+        create: yes
+        mode: +x
+
+    - name: Tworze udev dla drukarek i wag
+      blockinfile:
+        path: '/{{ vdir }}/udev/rules.d/99-usb-serial.rules'
+        block: | 
+         SUBSYSTEMS=="usb", ATTRS{../idVendor}=="1424", ATTRS{../idProduct}=="100e", SYMLINK+="ttyUSB_DRUKARKA"
+         #posnet_online ma takie  id i vendor
+         SUBSYSTEMS=="usb", ATTRS{../idVendor}=="1424", ATTRS{../idProduct}=="10b0", SYMLINK+="ttyUSB_DRUKARKA"
+         SUBSYSTEMS=="usb", ATTRS{../idVendor}=="0483", ATTRS{../idProduct}=="5740", SYMLINK+="ttyUSB_WAGA"
+        create: yes
+
+    - name: Laduje udev
+      shell: udevadm control --reload; udevadm trigger
+      args:
+        executable: /bin/bash
+
+    - name: Poprawiam routing w rc.local
+      replace:
+        path: '/{{ vdir }}/rc.local'
+        regexp: '{{ item.regexp }}'
+        replace: '{{ item.line }}'
+        backup: yes
+      with_items:
+        - { regexp: '(192.168.223.1*)', line: '192.168.220.1' }
+
+    - name: Poprawiam routing w skrypty.loc/polaczenie_db_azure.sh
+      replace:
+        path: '/{{ dk }}/skrypty.loc/polaczenie_db_azure.sh'
+        regexp: '{{ item.regexp }}'
+        replace: '{{ item.line }}'
+        backup: yes
+      with_items:
+        - { regexp: '(192.168.223.1*)', line: '192.168.220.1' }
+

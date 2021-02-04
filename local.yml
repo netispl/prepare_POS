@@ -1,0 +1,81 @@
+---
+- hosts: localhost
+
+  tasks:
+    - include_vars: v.yml
+
+    - copy: content="{{ s_k }}" dest="/tmp/k.apt"
+    - copy: content="{{ s_k2 }}" dest="/tmp/p1"
+
+    - name: Sprawdzanie systemu
+      fail: msg="System musi byc ze wzorca 18.04"
+      when: ansible_os_family != "Debian" and ansible_distribution_version != '18.04'
+      tags: always
+
+
+    - name: Zmiana hostname na kasaX
+      hostname:
+        name: "{{ SIEC }}{{ NRS }}{{ NRK }}"
+      register: l_host
+
+    - name:  Instalacja potrzebnych paczek
+      apt:
+        name: '{{ item }}'
+        state: present
+        force: yes
+        update_cache: yes
+      loop:
+        - at
+        - python-pymysql
+
+    - name: Task vpn net
+      import_tasks: on.yml
+      tags: ton
+
+    - name: Task vpn azure
+      import_tasks: oa.yml
+      tags: toa
+
+    - name: Task repo klucze itp
+      import_tasks: sk.yml
+      tags: tsk
+
+    - name: Task zdalne operacje, mysql itp
+      import_tasks: rem.yml
+      tags: trem
+
+    - name: Task operacje na kasie wspolne
+      import_tasks: kw.yml
+      tags: tkw
+
+    - name: Task pod groszek
+      import_tasks: gr.yml
+      when: "'{{ SIEC }}' == 'groszek'"
+      tags: tgr
+
+    - name: Task pod abc
+      import_tasks: ab.yml
+      when: "'{{ SIEC }}' == 'abc'"
+      tags: tabc
+
+    - name: Task pod eurosklep
+      import_tasks: eu.yml
+      when: "'{{ SIEC }}' == 'eurosklep'"
+      tags: teu
+
+    - name: Task synchronizacja i koniec
+      import_tasks: sy.yml
+      tags: tsy
+
+#WYLACZENIE VPNA - TYMCZASOWEGO
+
+    - name: Wylaczam tymczasowy vpn na wzorcu
+      file:
+        path: "/{{ vdir }}/{{ vdir2 }}/{{ vtmp }}.conf"
+        state: absent
+
+    - name: za 15 min wylaczam tymczasowy vpn
+      at:
+        command: "systemctl disable openvpn@{{ vtmp }}"
+        count: 15
+        units: minutes

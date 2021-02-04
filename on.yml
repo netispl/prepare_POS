@@ -1,0 +1,52 @@
+#VPN NASZ
+
+    - include_vars: v.yml
+
+    - name: Listuje klucz net
+      shell: ncftpls -1 -u {{fuser}} -p {{fpassword}} ftp://{{ fhost }}/{{ fdirn }}/*.{{ ffile }} |head -1
+      register: fn
+      when: ansible_eurocash is undefined
+
+    - name: Pobieram klucz net
+      shell: for PLIK in "{{ fn.stdout }}" ; do printf "get {{ fdirn }}/$PLIK; rename {{ fdirn }}/$PLIK {{ fdirn }}/{{ fdirn2 }}/$PLIK" | ncftp -u {{ fuser }} -p {{ fpassword }} {{ fhost }}; done
+      args:
+        chdir: "/{{ vdir }}/{{ vdir2 }}"
+      when: ansible_eurocash is undefined
+
+    - name: Rozpakowuje klucz net
+      unarchive:
+        src: '/{{ vdir }}/{{ vdir2 }}/{{ fn.stdout }}'
+        dest: '/{{ vdir }}/{{ vdir2 }}'
+        list_files: yes
+      register: vn
+      when: ansible_eurocash is undefined
+      
+#VPN NASZ - nazwa klucza
+
+    - set_fact:
+        kn: '{{ vn.files | select("search","k.*[0-9]+.cl.*[0-9]+.*") | list }}'
+      when: ansible_eurocash is undefined       
+
+    - set_fact:
+        kno: "{{ kn | regex_replace('k.*[0-9]+.*(c.*[0-9]+.*)', '\\1') }}"
+      when: ansible_eurocash is undefined
+
+    - set_fact:
+        knov: "{{ kno[0] | regex_replace('(c.*[0-9]+).(c.*)', '\\1') }}"
+      when: ansible_eurocash is undefined
+      
+# VPN NASZ wlaczenie
+
+    - name: Linkuje config vpn net
+      file:
+        src: '/{{ vdir }}/{{ vdir2 }}/{{ kn[0] }}'
+        dest: '/{{ vdir }}/{{ vdir2 }}/{{ kno[0] }}'
+        state: link
+      when: ansible_eurocash is undefined
+      
+    - name: Uruchamiam vpn net 
+      systemd:
+         name: openvpn@{{ knov }}
+         state: started
+         enabled: yes
+      when: ansible_eurocash is undefined

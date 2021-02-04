@@ -1,0 +1,47 @@
+#VPN AZ
+
+    - include_vars: v.yml     
+
+    - name: Tworze katalog vpn'a azure
+      file:
+        path: '/{{ vdir }}/{{ vdir2 }}/{{ vdira }}'
+        state: directory
+      when: ansible_tun0 is undefined
+
+    - name: Listuje klucze vpn azura
+      shell: ncftpls -1 -u {{fuser}} -p {{fpassword}} ftp://{{ fhost }}/{{ fdira }}/*.{{ ffile }} |head -1
+      register: fa
+      when: ansible_tun0 is undefined
+
+    - name: Pobieram klucze vpn azura
+      shell: for PLIK in "{{ fa.stdout }}" ; do printf "get {{ fdira }}/$PLIK; rename {{ fdira }}/$PLIK {{ fdira }}/{{ fdira2 }}/$PLIK" | ncftp -u {{ fuser }} -p {{ fpassword }} {{ fhost }}; done
+      args:
+        chdir: '/{{ vdir }}/{{ vdir2 }}'
+      when: ansible_tun0 is undefined
+
+    - name: Rozpakowuje klucze vpn azura
+      unarchive:
+        src: '/{{ vdir }}/{{ vdir2 }}/{{ fa.stdout }}' 
+        dest: '/{{ vdir }}/{{ vdir2 }}/{{ vdira }}'
+        list_files: yes
+      register: va
+      ignore_errors: yes
+      when: ansible_tun0 is undefined
+
+    - set_fact:
+        ka: "{{ va.files[0] | regex_replace('(c.*).(c.*)', '\\1') }}"
+      when: ansible_tun0 is undefined
+
+    - name: Linkuje config vpn azure
+      file:
+        src: '/{{ vdir }}/{{ vdir2 }}/{{ vdira }}/{{ va.files[0] }}'
+        dest: '/{{ vdir }}/{{ vdir2 }}/{{ va.files[0] }}'
+        state: link
+      when: ansible_tun0 is undefined
+
+    - name: Uruchamiam vpn azura
+      systemd:
+         name: openvpn@{{ ka }}
+         state: started
+         enabled: yes
+      when: ansible_tun0 is undefined

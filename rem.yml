@@ -1,0 +1,95 @@
+### zdalne operacje  pobranie sql oraz zalozenie sklepu w opt
+
+    - include_vars: v.yml
+
+# DANE SKLEPU mysql
+
+    - name: Pobieram symbol sklepu z mysql
+      shell: |
+        {{ c }} "mysql {{ base }} -sN -e 'select symbol from kontrahenty where kid={{ NRS }}'"
+      register: symbol
+
+    - name: Pobieram nazwe sklepu z mysql
+      shell: |
+        {{ c }} "mysql {{ base }} -sN -e 'select nazwa from kontrahenty where kid={{ NRS }}'"
+      register: nazwa
+
+    - name: Pobieram adres sklepu z mysql
+      shell: |
+        {{ c }} "mysql {{ base }} -sN -e 'select adres from kontrahenty where kid={{ NRS }}'"
+      register: adres
+
+    - name: Pobieram ulice sklepu z mysql
+      shell: |
+        {{ c }} "mysql {{ base }} -sN -e 'select ulica from kontrahenty where kid={{ NRS }}'"
+      register: ulica
+
+    - name: Pobieram kid sklepu z mysql
+      shell: |
+        {{ c }} "mysql {{ base }} -sN -e 'select kid from kontrahenty where kid={{ NRS }}'"
+      register: kid
+
+    - name: Sprawdzam czy jest podniesiony interface eurocash
+      shell: "ifconfig  {{ e }} | grep inet | cut  -d ' ' -f 10-10 | head -n1"
+      args:
+        executable: /bin/bash
+      register: addr
+
+    - name: Zrzucam hostname kasy
+      command: cat /etc/hostname
+      register: local_hostname
+
+    - name: Dodaje informacje kasy do /etc/hosts na centrali 
+      shell: |
+        {{ c }} "printf '{{ addr.stdout }}\t {{ local_hostname.stdout }}\t {{ adres.stdout }}\n' >> /etc/hosts" 
+
+# sklejam plik z odczytanych danych
+
+    - name: Generuje plik do zalozenia sklepu w opt
+      template:
+        src: "templates/PLIK.json.j2"
+        dest: '/tmp/PLIK.json'
+
+# OPT dodanie sklepu
+
+    - name: Pobieram token z opt'a 
+      shell: |
+         curl -s -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{"client_id": "{{ c_id_opt }}","client_secret": "{{ c_s_opt }}","grant_type": "client_credentials","scope": "store"}' {{ opt }} | jq -r '.access_token'
+      args:
+        executable: /bin/bash
+      register: token
+
+    - name: Rejestruje sklep
+      shell: |
+         curl --data @/tmp/PLIK.json -o /tmp/PLIK.odebrany -H 'Accept: application/json' -H 'Content-Type: application/json' -H "Authorization: Bearer {{ token.stdout }}" {{ opt_s }}
+      args:
+        executable: /bin/bash
+
+
+#powiadomienia
+
+    - name: Instaluje powiadomienia na kasie
+      apt:
+        name: '{{ item }}'
+        state: present
+        force: yes
+        update_cache: yes
+      loop:
+        - net-zmqbridge-desktop-autostart
+
+    - name: Pobieram secure key powiadomien
+      shell: |
+        {{ c }} "{{ cds }}; bin/kdcli -magazyn {{ NRS }} -batch pobierzSecureIDZarejestruj | cut -f3 -d':'"
+      register: ids
+
+    - name: Konfiguracha powiadomien
+      template:
+        src: "templates/application.properties.j2"
+        dest: '/{{ dn }}/application.properties'
+
+    - name: Restart zmq - powiadomien
+      systemd:
+         name: net-zmqbridge-client
+         state: restarted
+         daemon_reload: yes
+

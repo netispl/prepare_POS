@@ -1,0 +1,47 @@
+
+# HOST ALLOW
+
+    - include_vars: v.yml
+
+
+    - name:  Dodaje wpisy do hosts.allow 
+      lineinfile:
+         path: /etc/hosts.allow
+         line: 'ALL:10.'
+
+    - name: Generuje klucz miedzy kasa a centrala
+      file:
+       path: /tmp/p1
+       mode: 0600
+
+## REPO
+
+    - name: Konfiguruje repo-net
+      lineinfile:
+       create: yes
+       path: /etc/apt/auth.conf.d/repo.conf
+       line: '{{ item }}'
+      with_items:
+        - 'machine {{ rmachine }}'
+        - 'login {{ rlogin }}'
+        - 'password {{ rpass }}'
+
+    - name: Dodaje klucz repo-net
+      apt_key:
+       data: "{{ lookup('file', '/tmp/k.apt') }}"
+       state: present
+
+    - apt_repository:
+        repo: '{{ rn }}'
+        state: present
+        filename: repo-net
+
+    - name: Wylaczam aktualizacje apta podczas instalacji
+      systemd:
+         state: stopped
+         name: '{{ item }}'
+      loop:
+         - apt-daily.service
+         - apt-daily.timer
+         - apt-daily-upgrade.timer
+

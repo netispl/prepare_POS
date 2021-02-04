@@ -1,0 +1,47 @@
+#paczki repo abc
+
+    - include_vars: v.yml
+
+    - name:  Instalacja paczek kasnet/xkasnet ABC
+      apt:
+        name: '{{ item }}'
+        state: present
+        force: yes
+        update_cache: yes
+      loop:
+        - xkasnet-client-2.2.15=2.2.15r202009071553~bionic-1
+        - xkasnet-client-ec-2.2.15=2.2.15r202009071553~bionic-1
+        - kasnet-libwaga-2.1.326=2.1.326r202008261122~bionic-1
+        - kasnet-server-2.1.326=2.1.326r202008261122~bionic-1
+        - kasnet-src-2.1.326=2.1.326r202008261122~bionic-1
+
+    - name: Zmiana rozdzielczosci - Surface 
+      replace:
+        path: '/{{ dx }}/xkasnet-launcher'
+        regexp: '{{ item.regexp }}'
+        replace: '{{ item.line }}'
+        backup: yes
+      with_items:
+        - { regexp: 'kasa.*$', line: 'kasa.config-1700x1200-ecabc' }
+      when: ansible_product_name == 'Surface Go'
+ 
+    - name: Usuwam .cache 
+      file:
+        state: absent
+        path: '/{{ dx }}/.cache'
+      ignore_errors: yes
+
+      #quant 
+
+    - name: Zmiana rozdzielczosci - Quant
+      replace:
+        path: '/{{ dx }}/xkasnet-launcher'
+        regexp: '{{ item.regexp }}'
+        replace: '{{ item.line }}'
+        backup: yes
+      with_items:
+        - { regexp: 'kasa.*$', line: 'kasa.config-964x768_85dpi-ecabc' }
+      when: ansible_product_name == 'PT3200'
+
+
+ 

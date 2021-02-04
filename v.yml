@@ -1,0 +1,116 @@
+#v.yml - varsy
+#oa.yml - vpn azur - gotowe
+#on.yml - vpn net - gotowe
+#sk.yml - zestawienie kluczy - dodanie repo
+#remote - operacje po ssh - na centrali, zalozenie sklepu opt, powiadomienia
+#kw - wspolne operacje dla kasy lokalnie. - operacje w mysql
+#synch - serv itp
+#gr.yml - groszek
+#ab.yml - abc
+#eu.yml - eurosklep
+fbin: ncftp # komenda ncftp
+fbing: ncftpget # komenda ncftpget
+fbinp: ncftput # komenda ncftput
+fuser: eurocash # user ftp
+fpassword: A45PP9K1qr8Z_OfT #haslo ftp
+fhost: ftp.hm.nets.com.pl # host ftp
+dftp: pos_install # katalog z plikami na FTP
+ffile: tgz # koncowka plikow tgz
+fdirn: vpn_net # katalog z vpnami net
+fdirn2: zrobione # katalog z wykorzystanymi vpnami net
+fdira: vpn_az # katalog z vpn azure
+fdira2: zrobione # katalog z wykorzystanymi vpnami azure
+vdir: etc # katalog etc na kasie
+vdir2: openvpn # katalog openvpn na kasie
+vdira: azure # katalog azure na kasie
+vtmp: client.2.200 #nazwa klucza tymczasowego clientx.x
+NRS: "{{ lookup('file', '/tmp/POS_NRS') }}" #wpisuje instalator id kontrahenta
+NRK: "{{ lookup('file', '/tmp/POS_NRK') }}" #wpisuje instalator - numer kasy
+SIEC: "{{ lookup('file', '/tmp/POS_SIEC') }}" #wpisuje instalator eurosklep,groszek, abc
+rlogin: net # user repo
+rpass: "nEt!24git" # haslo repo
+rn: "deb http://repo.netis.pl bionic main" # adres repo deb
+rkey: "http://repo.netis.pl/keys/netis_key.pub" # klucz repo
+rmachine: "repo.netis.pl" # adres repo
+cent: "10.199.50.2" # adres vpn centrali
+base: hm00 # baza danych na centrali
+base_local: kasa # baza danych na kasie
+c: 'ssh -i /tmp/p1 {{ cent }} -o LogLevel=error -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null' # komenda logowanie do centrali po kluczu
+e: eurocash # u
+cds: 'cd /usr/local/sklep' # cd do sklep
+cdk: 'cd /home/kasa' # cd do kasa
+cdx: 'cd /home/xkasnet' # cd xkasnet
+cdu: 'cd /home/user' # cd user
+ds: '/usr/local/sklep/' # katalog sklepu na centrali
+dk: '/home/kasa/' # katalog na kasie
+dx: '/home/xkasnet/' # katalog na kasie
+du: '/home/user/' # katalog na kasie
+dn: '/home/netzmqbridge/' # katalog na kasie
+sp: '/etc/sudoers.d/' # sciezka do sudoersow
+c_id_opt: 'jgaxbrguyyb54xb5qdrowpg4xd6eelen' # client_id opt
+c_s_opt: 'phe9Cohz4geewivee4bahVi9laeh3di2'  # client_secret opt
+opt: 'http://192.168.20.92:8280/oauth/token' # adres opt
+opt_s: 'http://192.168.20.92:8280/api/v2/stores' # opt rejestracja sklep
+mlist: 'mk@netis.pl mszot@netis.pl pkozak@netis.pl kignaciuk@netis.pl'
+
+
+#fn - klucz vpn netis z ftp
+#fa - klucz vpn azure z ftp
+#Vn - vpn netis
+#Va - vpn azure
+#kn - keys.199/client.199.07.143.conf
+#kno - client.199.07.143.conf
+#knov - client.199.07.143
+
+#klucz apt - s_k
+s_k: |
+            -----BEGIN PGP PUBLIC KEY BLOCK-----
+            Version: GnuPG v1
+
+            mQENBFiFrEwBCADCzHPc474lgYz/DVNLNuZ/rFaC46t44BTI0TcflDpXTG+dzCm4
+            26Ylk6rpPEdCepkmnKrz0JaySEBKrkcHn25uxBkhxGCrpxQr+3WKHzDJ3AOaqAOR
+            lXq8+ZXG/mZOHs6Yd3oP5zCf51sHG97WIeW3+9Pw8fs4IKcne7mpj4LDg0GPeyD7
+            Z3T+an96mESOq4Ck4gS7ps7GRfGr3PS0cfCHOQ9vMyz1F5DJC+R19sKX4VR8ov8A
+            uEYeqP2z9nbHmA81pskoAleB/xjB874Bi8IZ3Yp0KaHcQb8U2Ds5gL5c49sRxBF0
+            nlgJnV9ESsvN3BCQRRn5A8RT1d9jBxvb9dbhABEBAAG0OU5ldCBJbm5vdmF0aW9u
+            IFNvZnR3YXJlIChOZXRpcyBzaWduaW5nIGtleSkgPGpsQG5ldGlzLnBsPokBOAQT
+            AQIAIgUCWIWsTAIbAwYLCQgHAwIGFQgCCQoLBBYCAwECHgECF4AACgkQXAYoHjN9
+            LWsYawf/TEeY5mq+uwmSKovFXUnuncTIMA6KzCshPRsBC/RHmg3uNuyoGB50Wbjw
+            7IVBYrzPqy5FlbwLFmOUm6i9FqBtmxZRDQ18U6iTzL3+6q4OWx4B1Hr3IrJmyUkd
+            N9xVRWXvACnxwYp3DxnGWt0lfA/39rKwy9ByC6t4UoQVCaJftuXLj/EKUyVYGRQu
+            u4eoaBnSJFzkouxJC4EzzFk9tTQ+UATCuc1raiGDiZw0H0kpe6DhrYxzH6k3J9M9
+            U93RpoT0SWC2ZDFkiU0UtO3tzxikskqsEX85Wb99AfpNmh9VpGfQUdNi3183INDo
+            fN+MqIFTfOcIJbJadK61wlV2bQ20CbkBDQRYhaxMAQgAwAcXnQXIB/fcqAWJtC4y
+            NgK5mqSi/1Wbal0yOlpz4QeVs3ZlVOZfWeaoE3WDdgNFybP7KbmuJtt2TDr4gLC4
+            n1W6Sg8tpeb1X6IPX+5kUb5LqDEPiN1bQz9ex/rT2+fCOUxHkebOOJ884C8sJEjM
+            dB+UHjOuUVaB8k3GfzGa4WXkXAgdzMfbpQsy6VgXBqCMaA27AGjTJeDuIgcrUGOm
+            c8JUxtWk+8+f4Hf0tZwxhMUGaaEiQS8FKja1oXT4lzokVpFr4A9kXMNF84YoQUns
+            28pdOx/rSfTS88bGajsB4eRQKB/MW+8lKNHo/NthBzkzVxk/sU/OwlBcrtpwle1+
+            CwARAQABiQEfBBgBAgAJBQJYhaxMAhsMAAoJEFwGKB4zfS1rzPAH/3huYoykOAXc
+            tM4o5jMSCZZHIYIrymh629EIacswv3097RulEgLFkOnxyAU96zg2W88YSVJs6Bz2
+            F2ESPlqXfzeFv2Q0TCp7pQuHm7dl5+h+pcZHM0fYVFVYyiDOhriIaHTURCh/ZuGh
+            pvMWzcjnljbI1CLkRZVZorsPMIeSE0nja7B7o/OOzd/zwNlQwjC7BgqmJZpVvDKw
+            XNRmSlqpk9jDB7OYx56yMxyiCY2+bgOCyPo6a5DLHppnREql2sA9qznT+Pd0vTko
+            jHf/rTm/SjlualDFLO1W+Ijwy5kGIWQRtcR+a6IbbCKMo0WXOuTfvcIrIr9wIHp5
+            aBppONtAs2Y=
+            =YwjP
+            -----END PGP PUBLIC KEY BLOCK-----
+
+
+#klucz do ssh - s_k2
+s_k2: |
+        -----BEGIN RSA PRIVATE KEY-----
+        MIICXAIBAAKBgQDG/IgMrNfksndGMn/QIjVOIbga/Cr3qQ1v2HRtJi/a4BY0x6bh
+        eAMuT6TIwOs2McM4qfAiZDKbgBYUhMttT1kqw5YUTPktScs6wGXYpjTNkQx3w8Ob
+        FT1e8ScnsMYW6gpB4WOrZAYiby1+cb13cRThCJ9YB3a52shQqbAGS647CQIBIwKB
+        gQC7naTYwDlFV8+LVC9d1xxQ+ziOeLrMQE5/Za+aHLDHDcvLXShQ7X9XjOvTOY1Q
+        Ws4COdPIp51uCw2BD335WXFSiVteryrNzKyLZJHkIBDVgoiwMUcqLolokxkJ1dzQ
+        W5WfiA48PvqC/wZPh1ZNWrKcXxniuuJ2mzhQlYd3EnVIZwJBAPde5o3xSxi48JI+
+        B6SWs9Dqfxzd/iQW47ghc8giTKNECVTxteQrjoO2Y9nUmaSaNqd2atsmOmjKZGgf
+        rgkBeucCQQDN7YtDTtlfwCLyCTRjfLst7hb+RM1LbfUJnZI0XICvVhM6NFDA7+n0
+        Qd2EfdGTEpAq1ys/UMtZAEF0bUaT8kyPAkEAhkl12AalHAyf2lwwCOQYeLnP+bpW
+        wyJeXKRyDY72Z0Iw85koOgkEON9axrU9dpzb10BIoto89w7Iys9eeercUQJATHzN
+        U4Ov0xt6saulvo1qGF+/ZcHImFwKjor7yk4+bQK2rzgAvLDh3mGba7m0PfDzuCQI
+        v77scYPAilR5TOT33QJBAMDEsZaQpABJI51f2IPZhkg+7E6TUnQZ05E8SAJfuaoC
+        ufzvE5lp5v4UExX4v7hOllr/gdwzQmsxDIn8sBcMrRc=
+        -----END RSA PRIVATE KEY-----
