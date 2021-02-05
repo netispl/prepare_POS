@@ -15,7 +15,7 @@ Komputer musi być mieć zainstalowany wzór POS'a **Ubuntu 18 64 bit**
 ```
 
 ## Instalacja
-Uruchomienie playbooka:
+Uruchomienie playbooka - (wymaga podania hasła do odszyfrowania klucza):
 ```
  sudo ansible-pull -U https://github.com/netispl/prepare_POS -i hosts
 ```
